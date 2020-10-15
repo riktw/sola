@@ -6,15 +6,15 @@ import spinal.lib.bus.wishbone._
 import spinal.lib.com.uart._
 import spinal.lib.com.uart.Uart
 
-class solaTop(gpioWidth : Int, bufferSize : Int, uartDiv : Int, fakeClock : Boolean, smallConfig : Boolean) extends Component {
+class solaTop(channelWidth : Int, bufferSize : Int, uartDiv : Int, fakeClock : Boolean, smallConfig : Boolean) extends Component {
   val io = new Bundle {
     val uart = master(Uart())
     val statusLEDs = out Bits(3 bits)
-    val dataPins = in Bits(1*32 bits)
+    val dataPins = in Bits(channelWidth*32 bits)
   }
 
-  val solaHandler = new solaHandler(gpioWidth, bufferSize / (gpioWidth*4), uartDiv, fakeClock, smallConfig)
-  val Sampler = new Sampler(gpioWidth, bufferSize / (gpioWidth*4), smallConfig)
+  val solaHandler = new solaHandler(channelWidth, bufferSize / (channelWidth*4), uartDiv, fakeClock, smallConfig)
+  val Sampler = new Sampler(channelWidth, bufferSize / (channelWidth*4), smallConfig)
   
   io.statusLEDs := Sampler.io.statusLEDs
   io.uart <> solaHandler.io.uart
@@ -22,10 +22,26 @@ class solaTop(gpioWidth : Int, bufferSize : Int, uartDiv : Int, fakeClock : Bool
   Sampler.io.SamplingParameters := solaHandler.io.SamplingParameters
   Sampler.io.cancelSampling := solaHandler.io.cancelSampling
   Sampler.io.address <> solaHandler.io.address
-  Sampler.io.dataPins(127 downto 101) := io.dataPins
+  Sampler.io.dataPins := io.dataPins
   solaHandler.io.data <> Sampler.io.data
   solaHandler.io.dataReady := Sampler.io.dataReady
 }
+
+//Generate Verilog
+object solaTopVerilog {
+  def main(args: Array[String]) {
+    SpinalVerilog(new solaTop(channelWidth = 4, bufferSize = 16384, uartDiv = 12, fakeClock = true, smallConfig = true)) 
+  }
+}
+
+
+//Generate VHDL
+object solaTopVHDL {
+  def main(args: Array[String]) {
+    SpinalVhdl(new solaTop(channelWidth = 4, bufferSize = 16384, uartDiv = 12, fakeClock = true, smallConfig = true)) 
+  }
+}
+
 
 //import spinal.core.sim._
 //import SpinalSimHelpers._
