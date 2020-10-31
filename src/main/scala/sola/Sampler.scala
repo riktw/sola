@@ -4,17 +4,17 @@ import spinal.core._
 import spinal.lib._
 import spinal.lib.fsm._
 
-class Sampler(gpioWidth : Int, bufferSize : Int, smallConfig : Boolean) extends Component {
+class Sampler(channelWidth : Int, bufferSize : Int, smallConfig : Boolean) extends Component {
   val io = new Bundle {
 
-    val dataPins = in Bits(gpioWidth*32 bits)
-    val SamplingParameters = in(SumpInterface(gpioWidth*32))
+    val dataPins = in Bits(channelWidth*32 bits)
+    val SamplingParameters = in(SumpInterface(channelWidth*32))
     val cancelSampling = in Bool
 
     val statusLEDs = out Bits(3 bits)
 
     val address = slave(Stream(UInt((log2Up(bufferSize) + 1) bits)))
-    val data = master(Stream(Bits(gpioWidth*32 bits)))
+    val data = master(Stream(Bits(channelWidth*32 bits)))
     val dataReady = out Bool
 
   }
@@ -25,9 +25,9 @@ class Sampler(gpioWidth : Int, bufferSize : Int, smallConfig : Boolean) extends 
   val addressRead = Reg(UInt((log2Up(bufferSize) + 1) bits)) init(0)
   val dataValid = Reg(Bool) init(False)
 
-  val sampleBuffer = Mem(Bits(gpioWidth*32 bits), wordCount = bufferSize)
+  val sampleBuffer = Mem(Bits(channelWidth*32 bits), wordCount = bufferSize)
   val sampleBufferAddress = UInt((log2Up(bufferSize) + 1) bits)
-  val sampleBufferData = Bits(gpioWidth*32 bits)
+  val sampleBufferData = Bits(channelWidth*32 bits)
   val sampleBufferRW = Bool
 
   io.data.payload := sampleBuffer.readWriteSync(sampleBufferAddress.resized, sampleBufferData, True, sampleBufferRW)

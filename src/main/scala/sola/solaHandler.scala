@@ -6,18 +6,18 @@ import spinal.lib.com.uart._
 import spinal.lib.fsm._
 import sola.SUMPProtocol._
 
-class solaHandler(gpioWidth : Int, bufferSize : Int, uartDiv : Int, fakeClock : Boolean, smallConfig : Boolean) extends Component {
+class solaHandler(channelWidth : Int, bufferSize : Int, uartDiv : Int, fakeClock : Boolean, smallConfig : Boolean) extends Component {
   val io = new Bundle {
     val uart = master(Uart())
     val cancelSampling = out Bool
-    val SamplingParameters = out(SumpInterface(gpioWidth*32))
+    val SamplingParameters = out(SumpInterface(channelWidth*32))
     val address = master(Stream(UInt((log2Up(bufferSize) + 1) bits)))
-    val data = slave(Stream(Bits(gpioWidth*32 bits)))
+    val data = slave(Stream(Bits(channelWidth*32 bits)))
     val dataReady = in Bool
   }
 
-  val triggerMask = Reg(Bits(gpioWidth*32 bits)) init(0)
-  val triggerValue = Reg(Bits(gpioWidth*32 bits)) init(0)
+  val triggerMask = Reg(Bits(channelWidth*32 bits)) init(0)
+  val triggerValue = Reg(Bits(channelWidth*32 bits)) init(0)
   val triggerState = Reg(Bool) init(False)
   val start = Reg(Bool()) init(False)
   val arm = Reg(Bool()) init(False)
@@ -27,16 +27,16 @@ class solaHandler(gpioWidth : Int, bufferSize : Int, uartDiv : Int, fakeClock : 
   val addressPayload = Reg(UInt((log2Up(bufferSize) + 1) bits)) init(0)
   val addressValid = Reg(Bool) init(False)
   val dataReady = Reg(Bool) init(False)
-  val channelGroups = Reg(Bits(gpioWidth*4 bits)) init(0)
+  val channelGroups = Reg(Bits(channelWidth*4 bits)) init(0)
 
   val fakeClockReg = Reg(Bool) init(False)
 
   val memorySizeInBytes = IntToBits(bufferSize*4)
   def metaData = List(
     B"8'x01",  B"8'x73",  B"8'x6F",  B"8'x6C",  B"8'x61", B"8'x00",     //Name
-    B"8'x21",  B"8'x00",  B"8'x00",  IntToBits((bufferSize*gpioWidth)>>6),  B"8'x00",               //Samples
+    B"8'x21",  B"8'x00",  B"8'x00",  IntToBits((bufferSize*channelWidth)>>6),  B"8'x00",               //Samples
     B"8'x23",  B"8'x00",  B"8'x5B",  B"8'x8D",  B"8'x80",               //Max speed
-    B"8'x40",  IntToBits(gpioWidth*32),                                 //Channels
+    B"8'x40",  IntToBits(channelWidth*32),                                 //Channels
     B"8'x41",  B"8'x02",                                                //Version
     B"8'x00"
   )
@@ -76,13 +76,13 @@ class solaHandler(gpioWidth : Int, bufferSize : Int, uartDiv : Int, fakeClock : 
 
   val fsm : StateMachine = new StateMachine {
     val commandByte = Reg(Bits(8 bits)) init(0)
-    val bytesToRead = Reg(UInt(log2Up(1+gpioWidth*4) bits)) init(0)
-    val bytesRead = Reg(Vec(Bits(8 bits), (gpioWidth*4)))
+    val bytesToRead = Reg(UInt(log2Up(1+channelWidth*4) bits)) init(0)
+    val bytesRead = Reg(Vec(Bits(8 bits), (channelWidth*4)))
     val bytesToWrite = Reg(UInt(5 bits)) init(0)
     val writeMeta = Reg(Bool) init(false)
 
-    val dataRead = Reg(Bits(gpioWidth*32 bits)) init (0)
-    val byteCounter = Counter(0 until gpioWidth * 4)
+    val dataRead = Reg(Bits(channelWidth*32 bits)) init (0)
+    val byteCounter = Counter(0 until channelWidth * 4)
     val dataInFlight = Reg(Bool) init (False)
 
     val stateIdle : State = new State with EntryPoint {
@@ -117,7 +117,7 @@ class solaHandler(gpioWidth : Int, bufferSize : Int, uartDiv : Int, fakeClock : 
           }.elsewhen(byteReceived === SUMP_XOFF) {
             start := False
           }.otherwise {
-            bytesToRead := gpioWidth*4;
+            bytesToRead := channelWidth*4;
             goto(stateReadCommand)
           }
         }
@@ -131,9 +131,9 @@ class solaHandler(gpioWidth : Int, bufferSize : Int, uartDiv : Int, fakeClock : 
           bytesToRead := bytesToRead - 1
         }
         when(bytesToRead === 0) {
-          val bytesReadEnd = Vec(Bits(8 bits), (gpioWidth*4))
+          val bytesReadEnd = Vec(Bits(8 bits), (channelWidth*4))
           //endianness swap per 32 bits
-          for(x <- 0 until gpioWidth) {
+          for(x <- 0 until channelWidth) {
             bytesReadEnd(x*4 + 0) := bytesRead(x*4 + 3)
             bytesReadEnd(x*4 + 1) := bytesRead(x*4 + 2)
             bytesReadEnd(x*4 + 2) := bytesRead(x*4 + 1)
@@ -155,7 +155,7 @@ class solaHandler(gpioWidth : Int, bufferSize : Int, uartDiv : Int, fakeClock : 
             }
           }.elsewhen(commandByte === SUMP_SET_FLAGS){
             if(!smallConfig) {
-              for (x <- 1 to gpioWidth) {
+              for (x <- 1 to channelWidth) {
                 channelGroups((x * 4) - 1 downto (x * 4) - 4) := bytesReadEnd.asBits(((x - 1) * 32) + 5 downto ((x - 1) * 32) + 2)
               }
             }
