@@ -4,7 +4,7 @@ import spinal.core._
 import spinal.lib._
 import spinal.lib.fsm._
 
-class Sampler(channelWidth : Int, bufferSize : Int, smallConfig : Boolean) extends Component {
+class Sampler(channelWidth : Int, bufferSize : Int, smallConfig : Boolean, speedDivider : Int) extends Component {
   val io = new Bundle {
 
     val dataPins = in Bits(channelWidth*32 bits)
@@ -104,7 +104,7 @@ class Sampler(channelWidth : Int, bufferSize : Int, smallConfig : Boolean) exten
             }
             dividerCount := 0
           }.otherwise {
-            dividerCount := dividerCount + 10
+            dividerCount := dividerCount + speedDivider
           }
         }
       }
@@ -129,7 +129,7 @@ class Sampler(channelWidth : Int, bufferSize : Int, smallConfig : Boolean) exten
             sampleCount := sampleCount + 1
             dividerCount := 0
           }.otherwise {
-            dividerCount := dividerCount + 10
+            dividerCount := dividerCount + speedDivider
           }
         }
         when(noTriggerSamplesFull) {
@@ -153,7 +153,7 @@ import spinal.core.sim._
 object SamplerSim {
   def main(args: Array[String]) {
 
-    SimConfig.withWave.doSim(new Sampler(1,  2048, false)) { dut =>
+    SimConfig.withWave.doSim(new Sampler(1,  2048, false, 10)) { dut =>
       //Fork a process to generate the reset and the clock on the dut
       dut.clockDomain.forkStimulus(period = 10)
 

@@ -6,7 +6,7 @@ import spinal.lib.com.uart._
 import spinal.lib.fsm._
 import sola.SUMPProtocol._
 
-class solaHandler(channelWidth : Int, bufferSize : Int, uartDiv : Int, fakeClock : Boolean, smallConfig : Boolean) extends Component {
+class solaHandler(channelWidth : Int, bufferSize : Int, uartDiv : Int, fakeClock : Boolean, smallConfig : Boolean, speedDivider : Int) extends Component {
   val io = new Bundle {
     val uart = master(Uart())
     val cancelSampling = out Bool
@@ -35,7 +35,7 @@ class solaHandler(channelWidth : Int, bufferSize : Int, uartDiv : Int, fakeClock
   def metaData = List(
     B"8'x01",  B"8'x73",  B"8'x6F",  B"8'x6C",  B"8'x61", B"8'x00",     //Name
     B"8'x21",  B"8'x00",  B"8'x00",  IntToBits((bufferSize*channelWidth)>>6),  B"8'x00",               //Samples
-    B"8'x23",  B"8'x00",  B"8'x5B",  B"8'x8D",  B"8'x80",               //Max speed
+    B"8'x23",  IntToBits((100000000/speedDivider)>>24),  IntToBits((100000000/speedDivider)>>16),  IntToBits((100000000/speedDivider)>>8),  IntToBits((100000000/speedDivider)>>0),        //Max speed
     B"8'x40",  IntToBits(channelWidth*32),                                 //Channels
     B"8'x41",  B"8'x02",                                                //Version
     B"8'x00"
@@ -307,7 +307,7 @@ import SpinalSimHelpers.UartHelper._
 object solaHandlerSim {
   def main(args: Array[String]) {
 
-    SimConfig.withWave.doSim(new solaHandler(1, 1024,1, false, false)){dut =>
+    SimConfig.withWave.doSim(new solaHandler(1, 1024,1, false, false, 10)){dut =>
       //Fork a process to generate the reset and the clock on the dut
       dut.clockDomain.forkStimulus(period = 10)
 
