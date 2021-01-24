@@ -55,6 +55,7 @@ class Sampler(channelWidth : Int, bufferSize : Int, smallConfig : Boolean, speed
           when(io.SamplingParameters.triggerState) {
             goto(stateCaptureNoTrigger)
           }.otherwise {
+            dividerCount := 0
             goto(stateCaptureTriggered)
           }
         }
@@ -111,7 +112,6 @@ class Sampler(channelWidth : Int, bufferSize : Int, smallConfig : Boolean, speed
     }
 
     val stateCaptureTriggered: State = new State {
-      onEntry(dividerCount := 0)
       whenIsActive {
         io.statusLEDs := "100"
         when(io.cancelSampling) {
