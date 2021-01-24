@@ -8,6 +8,7 @@ case class SumpInterface(gpioWidth : Int) extends Bundle {
   val triggerState = Bool
   val start = Bool
   val arm = Bool
+  val rle = Bool
   val divider = UInt(24 bits)
   val readCount = UInt(16 bits)
   val delayCount = UInt(16 bits)

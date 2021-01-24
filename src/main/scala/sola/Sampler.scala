@@ -4,6 +4,11 @@ import spinal.core._
 import spinal.lib._
 import spinal.lib.fsm._
 
+/*TODO: 
+On RLE enabled, only increase sampleCount on new sample 
+Force new value when counter is 0xFFFF
+*/
+
 class Sampler(channelWidth : Int, bufferSize : Int, smallConfig : Boolean, speedDivider : Int) extends Component {
   val io = new Bundle {
 
@@ -16,6 +21,9 @@ class Sampler(channelWidth : Int, bufferSize : Int, smallConfig : Boolean, speed
     val address = slave(Stream(UInt((log2Up(bufferSize) + 1) bits)))
     val data = master(Stream(Bits(channelWidth*32 bits)))
     val dataReady = out Bool
+    
+    val preTriggerSamples = out UInt((log2Up(bufferSize) + 1) bits) 
+    val postTriggerSamples = out UInt((log2Up(bufferSize) + 1) bits) 
 
   }
 
@@ -27,18 +35,25 @@ class Sampler(channelWidth : Int, bufferSize : Int, smallConfig : Boolean, speed
 
   val sampleBuffer = Mem(Bits(channelWidth*32 bits), wordCount = bufferSize)
   val sampleBufferAddress = UInt((log2Up(bufferSize) + 1) bits)
-  val sampleBufferData = Bits(channelWidth*32 bits)
+  val sampleBufferData = Reg(Bits(channelWidth*32 bits))
   val sampleBufferRW = Bool
+  
+  val lastSample = Reg(Bits(channelWidth*32 bits)) init(0)
+  val sampleUnchangedCount = Reg(UInt(16 bits)) init(0)
 
   io.data.payload := sampleBuffer.readWriteSync(sampleBufferAddress.resized, sampleBufferData, True, sampleBufferRW)
   sampleBufferAddress := 0
-  sampleBufferData := io.dataPins
+  sampleBufferData := (sampleUnchangedCount =/= 0 && io.SamplingParameters.rle) ? (U"32'x80000000" + sampleUnchangedCount).asBits |  io.dataPins
   sampleBufferRW := False
 
   io.address.ready := True
   io.data.valid := dataValid
   io.dataReady := dataReady
   io.statusLEDs := "001"
+  
+  io.preTriggerSamples := noTriggerSampleCount
+  io.postTriggerSamples := sampleCount
+  
 
   val fsm : StateMachine = new StateMachine {
     val dividerCount = Reg(UInt(24 bits)) init(0)
@@ -55,6 +70,7 @@ class Sampler(channelWidth : Int, bufferSize : Int, smallConfig : Boolean, speed
           when(io.SamplingParameters.triggerState) {
             goto(stateCaptureNoTrigger)
           }.otherwise {
+            dividerCount := 0
             goto(stateCaptureTriggered)
           }
         }
@@ -96,9 +112,24 @@ class Sampler(channelWidth : Int, bufferSize : Int, smallConfig : Boolean, speed
         }
         else {
           when(dividerCount >= io.SamplingParameters.divider) {
+            when(io.SamplingParameters.rle === True) {
+              when(lastSample === io.dataPins) {
+                sampleUnchangedCount := sampleUnchangedCount + 1
+              }.otherwise {
+                lastSample := io.dataPins
+                sampleUnchangedCount := 0
+                noTriggerSampleCount := noTriggerSampleCount + 1
+              }
+              when(sampleUnchangedCount === 0) {
+                noTriggerSampleCount := noTriggerSampleCount + 1
+              }
+            }
+            .otherwise {
+              noTriggerSampleCount := noTriggerSampleCount + 1
+            }
+          
             sampleBufferAddress := noTriggerSampleCount.resized
             sampleBufferRW := True
-            noTriggerSampleCount := noTriggerSampleCount + 1
             when(noTriggerSampleCount >= io.SamplingParameters.delayCount) {
               noTriggerSamplesFull := True
             }
@@ -111,7 +142,6 @@ class Sampler(channelWidth : Int, bufferSize : Int, smallConfig : Boolean, speed
     }
 
     val stateCaptureTriggered: State = new State {
-      onEntry(dividerCount := 0)
       whenIsActive {
         io.statusLEDs := "100"
         when(io.cancelSampling) {
@@ -126,7 +156,22 @@ class Sampler(channelWidth : Int, bufferSize : Int, smallConfig : Boolean, speed
           when(dividerCount >= io.SamplingParameters.divider) {
             sampleBufferAddress := (noTriggerSampleCount + sampleCount).resized
             sampleBufferRW := True
-            sampleCount := sampleCount + 1
+            
+            when(io.SamplingParameters.rle === True) {
+              when(lastSample === io.dataPins) {
+                sampleUnchangedCount := sampleUnchangedCount + 1
+              }.otherwise {
+                lastSample := io.dataPins
+                sampleUnchangedCount := 0
+                sampleCount := sampleCount + 1
+              }
+              when(sampleUnchangedCount === 0) {
+                sampleCount := sampleCount + 1
+              }
+            }
+            .otherwise {
+              sampleCount := sampleCount + 1
+            }
             dividerCount := 0
           }.otherwise {
             dividerCount := dividerCount + speedDivider
@@ -156,6 +201,8 @@ object SamplerSim {
     SimConfig.withWave.doSim(new Sampler(1,  2048, false, 10)) { dut =>
       //Fork a process to generate the reset and the clock on the dut
       dut.clockDomain.forkStimulus(period = 10)
+      
+      dut.io.SamplingParameters.rle #= true
 
       dut.io.dataPins #= 0x00000000
       dut.io.SamplingParameters.triggerMask #= 0x00000200
@@ -190,10 +237,45 @@ object SamplerSim {
         dut.io.address.payload #= x
         dut.io.address.valid #= true
         dut.io.data.ready #= true
-        dut.clockDomain.waitSampling(2)
+        dut.clockDomain.waitSampling(3)
+        assert(dut.io.data.payload.toBigInt == ((0x0200 - 0x00F9 - 1) + (x*2)))
       }
 
+      dut.clockDomain.waitSampling(100)
+      
+      
+      // test with RLE
+      
+      dut.io.dataPins #= 0x00000000
+      dut.io.SamplingParameters.triggerState #= true
+      dut.io.SamplingParameters.start #= false
+      dut.io.SamplingParameters.arm #= false
+      
+      dut.io.address.payload #= 0x00000000
+      dut.io.address.valid #= false
+      
+      //arm and start sampling
+      dut.io.SamplingParameters.arm #= true
+      dut.clockDomain.waitSampling(1)
+      dut.io.SamplingParameters.arm #= false
+      counter = 0
+      while(!dut.io.dataReady.toBoolean) {
+        dut.clockDomain.waitSampling(1)
+        counter = counter + 1
+        dut.io.dataPins #= counter / 10
+      }
+      
       dut.clockDomain.waitSampling(10)
+
+      for(x <- 0 to dut.io.SamplingParameters.readCount.toInt) {
+        dut.io.address.payload #= x
+        dut.io.address.valid #= true
+        dut.io.data.ready #= true
+        dut.clockDomain.waitSampling(3)
+        //assert(dut.io.data.payload.toBigInt == ((0x0200 - 0x00F9) + (x*2)))
+      }
+
+      dut.clockDomain.waitSampling(100)
 
     }
   }

@@ -25,6 +25,8 @@ class solaTop(channelWidth : Int, bufferSize : Int, uartDiv : Int, fakeClock : B
   Sampler.io.dataPins := io.dataPins
   solaHandler.io.data <> Sampler.io.data
   solaHandler.io.dataReady := Sampler.io.dataReady
+  solaHandler.io.preTriggerSamples := Sampler.io.preTriggerSamples
+  solaHandler.io.postTriggerSamples := Sampler.io.postTriggerSamples
 }
 
 //Generate Verilog
@@ -43,326 +45,331 @@ object solaTopVHDL {
 }
 
 
-//import spinal.core.sim._
-//import SpinalSimHelpers._
-//import SpinalSimHelpers.UartHelper._
+import spinal.core.sim._
+import SpinalSimHelpers._
+import SpinalSimHelpers.UartHelper._
 
-//object solaTopSim {
-//  def main(args: Array[String]) {
-//    /*
-//    //100Mhz clock, 8 clocks per bit, 115.2K = 108, 107 as of offset
-//    SimConfig.withWave.doSim(new solaTop(1, 2048,107)){dut =>
-//      //Fork a process to generate the reset and the clock on the dut
-//      dut.clockDomain.forkStimulus(period = 10)
-//
-//      dut.io.uart.rxd #= true
-//      dut.io.dataPins #= 0x12345678
-//
-//      dut.clockDomain.waitSampling(100)
-//
-//      val baudPeriod = calculateBaudPeriod(115200, 1000)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      dut.clockDomain.waitSampling(1000)
-//
-//      transmitUart(0x80, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x63, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//
-//      dut.clockDomain.waitSampling(10000)
-//
-//      transmitUart(0x81, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x0A, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x0A, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//
-//      dut.clockDomain.waitSampling(10000)
-//
-//      transmitUart(0x82, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//
-//      dut.clockDomain.waitSampling(10000)
-//
-//      transmitUart(0xC0, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x07, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//
-//      dut.clockDomain.waitSampling(10000)
-//
-//      transmitUart(0xC1, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x07, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//
-//      dut.clockDomain.waitSampling(10000)
-//
-//      transmitUart(0xC2, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x08, baudPeriod, dut.io.uart.rxd)  //08 for trigger test
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//
-//      dut.clockDomain.waitSampling(10000)
-//
-//      transmitUart(0x01, baudPeriod, dut.io.uart.rxd)
-//
-//      dut.clockDomain.waitSampling(2000000)
-//
-//    }
-//    */
-//
-///*
-//    SimConfig.withWave.doSim(new solaTop(2, 16384,107, true, true)){dut =>
-//      //Fork a process to generate the reset and the clock on the dut
-//      dut.clockDomain.forkStimulus(period = 10)
-//
-//      dut.io.uart.rxd #= true
-//      //dut.io.dataPins #= 0x12345678
-//
-//      dut.clockDomain.waitSampling(100)
-//
-//      val baudPeriod = calculateBaudPeriod(115200, 1000)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      dut.clockDomain.waitSampling(1000)
-//
-//      transmitUart(0x80, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x63, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//
-//
-//      dut.clockDomain.waitSampling(10000)
-//
-//      transmitUart(0x81, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x0A, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x0A, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//
-//
-//      dut.clockDomain.waitSampling(10000)
-//
-//      transmitUart(0x82, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//
-//      dut.clockDomain.waitSampling(10000)
-//
-//      transmitUart(0xC0, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x01, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x01, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x80, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x07, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//
-//
-//      dut.clockDomain.waitSampling(10000)
-//
-//      transmitUart(0xC1, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x07, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//
-//
-//      dut.clockDomain.waitSampling(10000)
-//
-//      transmitUart(0xC2, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x08, baudPeriod, dut.io.uart.rxd)  //08 for trigger test
-//
-//
-//      dut.clockDomain.waitSampling(20000)
-//
-//      transmitUart(0x01, baudPeriod, dut.io.uart.rxd)
-//
-//      dut.clockDomain.waitSampling(3500000)
-//
-//    }
-//
-//    */
-//
-//    SimConfig.withWave.doSim(new solaTop(4, 16384,107, true, true)){dut =>
-//      //Fork a process to generate the reset and the clock on the dut
-//      dut.clockDomain.forkStimulus(period = 10)
-//
-//      dut.io.uart.rxd #= true
-//      //dut.io.dataPins #= 0x12345678
-//
-//      dut.clockDomain.waitSampling(100)
-//
-//      val baudPeriod = calculateBaudPeriod(115200, 1000)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      dut.clockDomain.waitSampling(1000)
-//
-//      transmitUart(0x80, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x63, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//
-//
-//      dut.clockDomain.waitSampling(10000)
-//
-//      transmitUart(0x81, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x0A, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x0A, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//
-//
-//      dut.clockDomain.waitSampling(10000)
-//
-//      transmitUart(0x82, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x18, baudPeriod, dut.io.uart.rxd)
-//
-//      dut.clockDomain.waitSampling(10000)
-//
-//      transmitUart(0xC0, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x20, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x40, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x10, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//
-//
-//      dut.clockDomain.waitSampling(10000)
-//
-//      transmitUart(0xC1, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x20, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//
-//
-//      dut.clockDomain.waitSampling(10000)
-//
-//      transmitUart(0xC2, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x20, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
-//
-//
-//      dut.clockDomain.waitSampling(20000)
-//
-//      transmitUart(0x01, baudPeriod, dut.io.uart.rxd)
-//
-//      dut.clockDomain.waitSampling(3500000)
-//
-//    }
-//
-//
-//  }
-//}
-//
+object solaTopSim {
+  def main(args: Array[String]) {
+    
+    //100Mhz clock, 8 clocks per bit, 115.2K = 108, 107 as of offset
+    SimConfig.withWave.doSim(new solaTop(1, 2048,107,false, false, 10)){dut =>
+      //Fork a process to generate the reset and the clock on the dut
+      dut.clockDomain.forkStimulus(period = 10)
+
+      dut.io.uart.rxd #= true
+      dut.io.dataPins #= 0x12345678
+
+      dut.clockDomain.waitSampling(100)
+
+      val baudPeriod = calculateBaudPeriod(115200, 1000)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      dut.clockDomain.waitSampling(1000)
+
+      transmitUart(0x80, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x63, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+
+      dut.clockDomain.waitSampling(10000)
+
+      transmitUart(0x81, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x2A, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x2A, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+
+      dut.clockDomain.waitSampling(10000)
+
+      transmitUart(0x82, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+
+      dut.clockDomain.waitSampling(10000)
+
+      transmitUart(0xC0, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x07, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+
+      dut.clockDomain.waitSampling(10000)
+
+      transmitUart(0xC1, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x07, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+
+      dut.clockDomain.waitSampling(10000)
+
+      transmitUart(0xC2, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)  //08 for trigger test
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x08, baudPeriod, dut.io.uart.rxd)
+
+      dut.clockDomain.waitSampling(10000)
+
+      transmitUart(0x01, baudPeriod, dut.io.uart.rxd)
+
+      dut.clockDomain.waitSampling(300000)
+      
+      transmitUart(0x05, baudPeriod, dut.io.uart.rxd)
+      
+      dut.clockDomain.waitSampling(1700000)
+
+    }
+    
+
+/*
+    SimConfig.withWave.doSim(new solaTop(2, 16384,107, true, true)){dut =>
+      //Fork a process to generate the reset and the clock on the dut
+      dut.clockDomain.forkStimulus(period = 10)
+
+      dut.io.uart.rxd #= true
+      //dut.io.dataPins #= 0x12345678
+
+      dut.clockDomain.waitSampling(100)
+
+      val baudPeriod = calculateBaudPeriod(115200, 1000)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      dut.clockDomain.waitSampling(1000)
+
+      transmitUart(0x80, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x63, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+
+
+      dut.clockDomain.waitSampling(10000)
+
+      transmitUart(0x81, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x0A, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x0A, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+
+
+      dut.clockDomain.waitSampling(10000)
+
+      transmitUart(0x82, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+
+      dut.clockDomain.waitSampling(10000)
+
+      transmitUart(0xC0, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x01, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x01, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x80, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x07, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+
+
+      dut.clockDomain.waitSampling(10000)
+
+      transmitUart(0xC1, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x07, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+
+
+      dut.clockDomain.waitSampling(10000)
+
+      transmitUart(0xC2, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x08, baudPeriod, dut.io.uart.rxd)  //08 for trigger test
+
+
+      dut.clockDomain.waitSampling(20000)
+
+      transmitUart(0x01, baudPeriod, dut.io.uart.rxd)
+
+      dut.clockDomain.waitSampling(3500000)
+
+    }
+
+    */
+    /*
+    SimConfig.withWave.doSim(new solaTop(4, 16384,107, true, true)){dut =>
+      //Fork a process to generate the reset and the clock on the dut
+      dut.clockDomain.forkStimulus(period = 10)
+
+      dut.io.uart.rxd #= true
+      //dut.io.dataPins #= 0x12345678
+
+      dut.clockDomain.waitSampling(100)
+
+      val baudPeriod = calculateBaudPeriod(115200, 1000)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      dut.clockDomain.waitSampling(1000)
+
+      transmitUart(0x80, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x63, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+
+
+      dut.clockDomain.waitSampling(10000)
+
+      transmitUart(0x81, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x0A, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x0A, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+
+
+      dut.clockDomain.waitSampling(10000)
+
+      transmitUart(0x82, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x18, baudPeriod, dut.io.uart.rxd)
+
+      dut.clockDomain.waitSampling(10000)
+
+      transmitUart(0xC0, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x20, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x40, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x10, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+
+
+      dut.clockDomain.waitSampling(10000)
+
+      transmitUart(0xC1, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x20, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+
+
+      dut.clockDomain.waitSampling(10000)
+
+      transmitUart(0xC2, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x20, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+      transmitUart(0x00, baudPeriod, dut.io.uart.rxd)
+
+
+      dut.clockDomain.waitSampling(20000)
+
+      transmitUart(0x01, baudPeriod, dut.io.uart.rxd)
+
+      dut.clockDomain.waitSampling(3500000)
+
+    }
+                                                        */
+
+
+  }
+}
+

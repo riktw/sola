@@ -14,6 +14,9 @@ class solaHandler(channelWidth : Int, bufferSize : Int, uartDiv : Int, fakeClock
     val address = master(Stream(UInt((log2Up(bufferSize) + 1) bits)))
     val data = slave(Stream(Bits(channelWidth*32 bits)))
     val dataReady = in Bool
+    
+    val preTriggerSamples = in UInt((log2Up(bufferSize) + 1) bits)
+    val postTriggerSamples = in UInt((log2Up(bufferSize) + 1) bits)
   }
 
   val triggerMask = Reg(Bits(channelWidth*32 bits)) init(0)
@@ -54,6 +57,7 @@ class solaHandler(channelWidth : Int, bufferSize : Int, uartDiv : Int, fakeClock
   io.SamplingParameters.divider := divider
   io.SamplingParameters.readCount := readCount
   io.SamplingParameters.delayCount := delayCount
+  io.SamplingParameters.rle := False
   io.cancelSampling := False
 
   val uartCtrlConfig = UartCtrlGenerics(
@@ -202,6 +206,12 @@ class solaHandler(channelWidth : Int, bufferSize : Int, uartDiv : Int, fakeClock
           when(uartCtrl.io.read.payload === SUMP_RESET) {
             io.cancelSampling := True
             goto(stateIdle)
+          }
+          when(uartCtrl.io.read.payload === SUMP_RLE_FINISH) {
+            io.cancelSampling := True
+            addressPayload := ((io.preTriggerSamples + io.postTriggerSamples) - 1).resized
+            dataInFlight := False
+            goto(stateSendPayload)
           }
         }
         when(io.dataReady) {
